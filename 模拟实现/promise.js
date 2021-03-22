@@ -18,6 +18,87 @@ function Promise(fn) {
   this.finally = function (onDone) {
     this.then(onDone, onDone)
   }
+
+  /**
+   * 
+   * @param 
+   * 这些情况下，Promise.resolve 的入参可能有以下几种情况：
+      无参数 [直接返回一个resolved状态的 Promise 对象]
+      普通数据对象 [直接返回一个resolved状态的 Promise 对象]
+      一个Promise实例 [直接返回当前实例]
+      一个thenable对象(thenable对象指的是具有then方法的对象) [转为 Promise 对象，并立即执行thenable对象的then方法。]
+   * @returns 
+   */
+  this.resolve = function (value) {
+    if (value && value instanceof Promise) {
+      return value
+    } else if (
+      value &&
+      typeof value === 'object' &&
+      typeof value.then === 'function'
+    ) {
+      const { then } = value
+      return new Promise((resolve) => {
+        then(resolve)
+      })
+    } else if (value) {
+      return new Promise((resolve) => resolve(value))
+    } else {
+      return new Promise((resolve) => resolve())
+    }
+  }
+
+  this.reject = function (value) {
+    return new Promise((resolve, reject) => reject(value))
+  }
+
+  this.all = function (arr) {
+    const args = Array.prototype.slice.call(arr)
+    return new Promise((resolve, reject) => {
+      const len = args.length
+      if (len === 0) {
+        return resolve([])
+      }
+      let remaining = len
+      function res(index, val) {
+        try {
+          if (
+            val &&
+            typeof val === 'object' &&
+            typeof val.then === 'function'
+          ) {
+            const { then } = val
+            then.call(
+              val,
+              (val) => {
+                res(index, val)
+              },
+              reject,
+            )
+          }
+          args[i] = val
+          if (--remaining === 0) {
+            resolve(args)
+          }
+        } catch (e) {
+          reject(e)
+        }
+      }
+      for (let i = 0; i < len; i++) {
+        res(i, args[i])
+      }
+    })
+  }
+
+  this.race = function (arr) {
+    return new Promise((resolve, reject) => {
+      const len = arr.length
+      for (let i = 0; i < len; i++) {
+        arr[i].then(resolve, reject)
+      }
+    })
+  }
+
   function handle(cb) {
     if (state === 'pending') {
       callbacks.push(cb)
@@ -34,7 +115,7 @@ function Promise(fn) {
         const ret = callback(value)
         next(ret)
       } catch (e) {
-        rejct(e)
+        reject(e)
       }
     }
   }
