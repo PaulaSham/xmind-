@@ -1,4 +1,91 @@
-const { type } = require('os')
+// 深克隆
+function deepClone(obj) {
+  if (!obj || typeof obj !== 'object') {
+    return obj
+  }
+  let newObj = obj instanceof Array ? [] : {}
+  for (let key in obj) {
+    if (obj.hasOwnPropertyOf(key)) {
+      const value = obj[key]
+      newObj[key] =
+        value && typeof value === 'object' ? deepClone(value) : value
+    }
+  }
+  return newObj
+}
+
+// 锁
+function lockAsync(fn) {
+  let isLock = false
+  return function (...args) {
+    const context = this
+    if (isLock) {
+      return
+    }
+    isLock = true
+    try {
+      // fn 通常是一个异步函数
+      const result = fn.apply(context, args)
+      return Promise.resolve(result)
+        .then((res) => {
+          isLock = false
+          return res
+        })
+        .catch((e) => {
+          throw e
+        })
+    } catch (e) {
+      isLock = false
+      console.log(e)
+      throw e
+    }
+  }
+}
+
+function debounce(fn, wait) {
+  let timer = null
+  return function () {
+    if (timeout) {
+      clearTimeout(timer)
+    }
+    // 保存this的原因：需要用到防抖时直接调用debounce，因此debounce的this指向调用者。没有直接调用fn，因此fn的this并非指向调用者，所以需要把作用域传递给fn
+    const context = this
+    // 传递参数
+    const args = arguments
+    timer = setTimeout(() => {
+      fn.apply(context, args)
+    }, wait)
+  }
+}
+
+// 时间戳
+function throttle(fn, wait) {
+  let previous = 0
+  return function () {
+    const context = this
+    const args = arguments
+    const now = +new Date()
+    if (now - previous > wait) {
+      fn.apply(context, args)
+      previous = now
+    }
+  }
+}
+
+// 定时器
+function throttle1(fn, wait) {
+  let timer = null
+  return function () {
+    const context = this
+    const args = arguments
+    if (!timer) {
+      timer = setTimeout(() => {
+        fn.apply(context, args)
+        timer = null
+      }, wait)
+    }
+  }
+}
 
 function throttle(fn, wait) {
   const context = this
@@ -28,21 +115,6 @@ function throttle(fn, wait) {
     }
   }
   return throrrled
-}
-
-function deepClone(obj) {
-  if (!obj || typeof obj !== 'object') {
-    return obj
-  }
-  let newObj = obj instanceof Array ? [] : {}
-  for (let key in obj) {
-    if (obj.hasOwnPropertyOf(key)) {
-      const value = obj[key]
-      newObj[key] =
-        value && typeof value === 'object' ? deepClone(value) : value
-    }
-  }
-  return newObj
 }
 
 function curry(fn, args) {

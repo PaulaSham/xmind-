@@ -4,13 +4,14 @@ function Promise(fn) {
   let callbacks = [] //todo 作用
 
   // on 处理的意思 同handle
+  // then 返回一个promise
   this.then = function (onFulFilled, onRejected) {
     // 为什么要 return
     return new Promise((resolve, reject) => {
       handle({ onFulFilled, onRejected, resolve, reject })
     })
   }
-
+  // 太难理解了，看下面的promiseAll
   this.all = function (arr) {
     // 初始化，复制一遍
     const args = Array.prototype.slice.call(arr)
@@ -19,7 +20,11 @@ function Promise(fn) {
       console.log('len', len)
       let remaining = len
       if (len === 0) return res([])
+      for (let i = 0; i < len; i++) {
+        ret(i, args[i])
+      }
       function ret(index, value) {
+        // value -> promise
         try {
           if (
             value &&
@@ -44,10 +49,6 @@ function Promise(fn) {
         } catch (e) {
           rej(e)
         }
-      }
-
-      for (let i = 0; i < len; i++) {
-        ret(i, args[i])
       }
     })
   }
@@ -94,7 +95,8 @@ function Promise(fn) {
       value = newVal
       handleCb()
     }
-    setTimeout(fn, 0)
+    // setTimeout(fn, 0)
+    queueMicrotask(fn)
   }
 
   function handleCb() {
@@ -143,3 +145,30 @@ const p2 = new Promise((resolve, reject) => resolve('p2'))
 
 // 测试race
 new Promise().race([p1, p2]).then((res) => console.log('race', res))
+
+function promiseAll1(arr) {
+  let promiseLen = Array.isArray(arr) ? arr.length : 0
+  if (promiseLen === 0) {
+    return []
+  }
+  const _promise = arr.map((item) => {
+    return item instanceof Promise ? item : Promise.resolve(item)
+  })
+  return new Promise((resolve, reject) => {
+    const result = []
+    _promise.forEach((element, index) => {
+      element.then(
+        (val) => {
+          result[index] = val
+          promiseLen--
+          if (promiseLen === 0) {
+            return resolve(result)
+          }
+        },
+        (err) => {
+          reject(err)
+        },
+      )
+    })
+  })
+}
